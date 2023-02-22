@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/fs"
 	"io/ioutil"
-	"log"
 	"time"
 
 	"github.com/playwright-community/playwright-go"
@@ -28,67 +27,81 @@ type Playwright struct {
 }
 
 // Launch starts the playwright client and launches a browser
-func (p *Playwright) Launch(args playwright.BrowserTypeLaunchOptions) {
+func (p *Playwright) Launch(args playwright.BrowserTypeLaunchOptions) error {
 	pw, err := playwright.Run()
 	if err != nil {
-		log.Fatalf("could not start playwright: %v", err)
+		ReportError(err, "xk6-playwright: cannot start playwright")
+		return err
 	}
 	browser, err := pw.Chromium.Launch(args)
 	if err != nil {
-		log.Fatalf("could not launch browser: %v", err)
+		ReportError(err, "xk6-playwright: cannot launch chromium")
+		return err
 	}
 	p.Self = pw
 	p.Browser = browser
+	return nil
 }
 
 // LaunchPersistent starts the playwright client and launches a browser with a persistent context
-func (p *Playwright) LaunchPersistent(dir string, args playwright.BrowserTypeLaunchPersistentContextOptions) {
+func (p *Playwright) LaunchPersistent(dir string, args playwright.BrowserTypeLaunchPersistentContextOptions) error {
 	pw, err := playwright.Run()
 	if err != nil {
-		log.Fatalf("could not start playwright: %v", err)
+		ReportError(err, "xk6-playwright: cannot start playwright")
+		return err
 	}
 	browser, err := pw.Chromium.LaunchPersistentContext(dir, args)
 	if err != nil {
-		log.Fatalf("could not launch browser: %v", err)
+		ReportError(err, "xk6-playwright: cannot launch chromium")
+		return err
 	}
 	p.Self = pw
 	p.BrowserContext = browser
+	return nil
 }
 
 // Connect attaches Playwright to an existing browser instance
-func (p *Playwright) Connect(url string, args playwright.BrowserTypeConnectOverCDPOptions) {
+func (p *Playwright) Connect(url string, args playwright.BrowserTypeConnectOverCDPOptions) error {
 	pw, err := playwright.Run()
 	if err != nil {
-		log.Fatalf("could not start playwright: %v", err)
+		ReportError(err, "xk6-playwright: cannot start playwright")
+		return err
 	}
 	browser, err := pw.Chromium.ConnectOverCDP(url, args)
 	if err != nil {
-		log.Fatalf("could not launch browser: %v", err)
+		ReportError(err, "xk6-playwright: cannot launch chromium")
+		return err
 	}
 	context := browser.Contexts()[0]
 
 	p.Self = pw
 	p.Browser = browser
 	p.Page = context.Pages()[0]
+	return nil
 }
 
 // NewPage opens a new page within the browser
-func (p *Playwright) NewPage() {
+func (p *Playwright) NewPage() error {
 	page, err := p.newPage()
 	if err != nil {
-		log.Fatalf("could not create page: %v", err)
+		ReportError(err, "xk6-playwright: cannot create page")
+		return err
 	}
 	p.Page = page
+	return nil
 }
 
 // Kill closes browser instance and stops puppeteer client
-func (p *Playwright) Kill() {
+func (p *Playwright) Kill() error {
 	if err := p.closeBrowser(); err != nil {
-		log.Fatalf("could not close browser: %v", err)
+		ReportError(err, "xk6-playwright: cannot close browser")
+		return err
 	}
 	if err := p.Self.Stop(); err != nil {
-		log.Fatalf("could not stop Playwright: %v", err)
+		ReportError(err, "xk6-playwright: cannot stop playwright")
+		return err
 	}
+	return nil
 }
 
 //---------------------------------------------------------------------
@@ -96,38 +109,48 @@ func (p *Playwright) Kill() {
 //---------------------------------------------------------------------
 
 // Goto wrapper around playwright goto page function that takes in a url and a set of options
-func (p *Playwright) Goto(url string, opts playwright.PageGotoOptions) {
+func (p *Playwright) Goto(url string, opts playwright.PageGotoOptions) error {
 	if _, err := p.Page.Goto(url, opts); err != nil {
-		log.Fatalf("could not goto: %v", err)
+		ReportError(err, "xk6-playwright: error when goto url")
+		return err
 	}
+	return nil
 }
 
 // WaitForSelector wrapper around playwright waitForSelector page function that takes in a selector and a set of options
-func (p *Playwright) WaitForSelector(selector string, opts playwright.PageWaitForSelectorOptions) {
+func (p *Playwright) WaitForSelector(selector string, opts playwright.PageWaitForSelectorOptions) error {
 	if _, err := p.Page.WaitForSelector(selector, opts); err != nil {
-		log.Fatalf("error with waiting for the selector: %v", err)
+		ReportError(err, "xk6-playwright: error waiting for selector")
+		return err
 	}
+	return nil
 }
 
 // Click wrapper around playwright click page function that takes in a selector and a set of options
-func (p *Playwright) Click(selector string, opts playwright.PageClickOptions) {
+func (p *Playwright) Click(selector string, opts playwright.PageClickOptions) error {
 	if err := p.Page.Click(selector, opts); err != nil {
-		log.Fatalf("error with clicking: %v", err)
+		ReportError(err, "xk6-playwright: error with clicking")
+		return err
 	}
+	return nil
 }
 
 // Type wrapper around playwright type page function that takes in a selector, string, and a set of options
-func (p *Playwright) Type(selector string, typedString string, opts playwright.PageTypeOptions) {
+func (p *Playwright) Type(selector string, typedString string, opts playwright.PageTypeOptions) error {
 	if err := p.Page.Type(selector, typedString, opts); err != nil {
-		log.Fatalf("error with typing: %v", err)
+		ReportError(err, "xk6-playwright: error with typing")
+		return err
 	}
+	return nil
 }
 
 // PressKey wrapper around playwright Press page function that takes in a selector, key, and a set of options
-func (p *Playwright) PressKey(selector string, key string, opts playwright.PagePressOptions) {
+func (p *Playwright) PressKey(selector string, key string, opts playwright.PagePressOptions) error {
 	if err := p.Page.Press(selector, key, opts); err != nil {
-		log.Fatalf("error with pressing the key: %v", err)
+		ReportError(err, "xk6-playwright: error with pressing the key")
+		return err
 	}
+	return nil
 }
 
 // Sleep wrapper around playwright waitForTimeout page function that sleeps for the given `timeout` in milliseconds
@@ -136,81 +159,100 @@ func (p *Playwright) Sleep(time float64) {
 }
 
 // Screenshot wrapper around playwright screenshot page function that attempts to take and save a png image of the current screen.
-func (p *Playwright) Screenshot(filename string, perm fs.FileMode, opts playwright.PageScreenshotOptions) {
+func (p *Playwright) Screenshot(filename string, perm fs.FileMode, opts playwright.PageScreenshotOptions) error {
 	image, err := p.Page.Screenshot(opts)
 	if err != nil {
-		log.Fatalf("error with taking a screenshot: %v", err)
+		ReportError(err, "xk6-playwright: error with taking a screenshot")
+		return err
 	}
 	err = ioutil.WriteFile("Screenshot_"+time.Now().Format("2017-09-07 17:06:06")+".png", image, perm)
 	if err != nil {
-		log.Fatalf("error with writing the screenshot to the file system: %v", err)
+		ReportError(err, "xk6-playwright: error with writing the screenshot to the file system")
+		return err
 	}
+	return nil
 }
 
 // Focus wrapper around playwright focus page function that takes in a selector and a set of options
-func (p *Playwright) Focus(selector string, opts playwright.PageFocusOptions) {
+func (p *Playwright) Focus(selector string, opts playwright.PageFocusOptions) error {
 	if err := p.Page.Focus(selector); err != nil {
-		log.Fatalf("error focusing on the element: %v", err)
+		ReportError(err, "xk6-playwright: error with focusing")
+		return err
 	}
+	return nil
 }
 
 // Fill wrapper around playwright fill page function that takes in a selector, text, and a set of options
-func (p *Playwright) Fill(selector string, filledString string, opts playwright.FrameFillOptions) {
+func (p *Playwright) Fill(selector string, filledString string, opts playwright.FrameFillOptions) error {
 	if err := p.Page.Fill(selector, filledString, opts); err != nil {
-		log.Fatalf("error with fill: %v", err)
+		ReportError(err, "xk6-playwright: error with filling")
+		return err
 	}
+	return nil
 }
 
 // SelectOptions wrapper around playwright selectOptions page function that takes in a selector, values, and a set of options
-func (p *Playwright) SelectOptions(selector string, values playwright.SelectOptionValues, opts playwright.FrameSelectOptionOptions) {
+func (p *Playwright) SelectOptions(selector string, values playwright.SelectOptionValues, opts playwright.FrameSelectOptionOptions) error {
 	_, err := p.Page.SelectOption(selector, values, opts)
 	if err != nil {
-		log.Fatalf("error selecting the option: %v", err)
+		ReportError(err, "xk6-playwright: error with selecting options")
+		return err
 	}
+	return nil
 }
 
 // Check wrapper around playwright check page function that takes in a selector and a set of options
-func (p *Playwright) Check(selector string, opts playwright.FrameCheckOptions) {
+func (p *Playwright) Check(selector string, opts playwright.FrameCheckOptions) error {
 	if err := p.Page.Check(selector, opts); err != nil {
-		log.Fatalf("error with checking the field: %v", err)
+		ReportError(err, "xk6-playwright: error with checking the field")
+		return err
 	}
+	return nil
 }
 
 // Uncheck wrapper around playwright uncheck page function that takes in a selector and a set of options
-func (p *Playwright) Uncheck(selector string, opts playwright.FrameUncheckOptions) {
+func (p *Playwright) Uncheck(selector string, opts playwright.FrameUncheckOptions) error {
 	if err := p.Page.Uncheck(selector, opts); err != nil {
-		log.Fatalf("error with unchecking the field: %v", err)
+		ReportError(err, "xk6-playwright: error with unchecking the field")
+		return err
 	}
+	return nil
 }
 
 // DragAndDrop wrapper around playwright draganddrop page function that takes in two selectors(source and target) and a set of options
-func (p *Playwright) DragAndDrop(sourceSelector string, targetSelector string, opts playwright.FrameDragAndDropOptions) {
+func (p *Playwright) DragAndDrop(sourceSelector string, targetSelector string, opts playwright.FrameDragAndDropOptions) error {
 	if err := p.Page.DragAndDrop(sourceSelector, targetSelector, opts); err != nil {
-		log.Fatalf("error with drag and drop: %v", err)
+		ReportError(err, "xk6-playwright: error with dragging and dropping")
+		return err
 	}
+	return nil
 }
 
 // Evaluate wrapper around playwright evaluate page function that takes in an expresion and a set of options and evaluates the expression/function returning the resulting information.
 func (p *Playwright) Evaluate(expression string, opts playwright.PageEvaluateOptions) interface{} {
 	returnedValue, err := p.Page.Evaluate(expression, opts)
 	if err != nil {
-		log.Fatalf("error evaluating the expression: %v", err)
+		ReportError(err, "xk6-playwright: error with evaluating the expression")
+		return nil
 	}
 	return returnedValue
 }
 
 // Reload wrapper around playwright reload page function
-func (p *Playwright) Reload() {
+func (p *Playwright) Reload() error {
 	if _, err := p.Page.Reload(); err != nil {
-		log.Fatalf("error with reloading the page: %v", err)
+		ReportError(err, "xk6-playwright: error when reloading the page")
+		return err
 	}
+	return nil
 }
 
 // FirstPaint function that gathers the Real User Monitoring Metrics for First Paint of the current page
 func (p *Playwright) FirstPaint() uint64 {
 	entries, err := p.Page.Evaluate("JSON.stringify(performance.getEntriesByName('first-paint'))")
 	if err != nil {
-		log.Fatalf("error with getting the first-paint entries: %v", err)
+		ReportError(err, "xk6-playwright: error with getting the first-paint entries")
+		return 0
 	}
 	entriesToString := fmt.Sprintf("%v", entries)
 	return gjson.Get(entriesToString, "0.startTime").Uint()
@@ -220,7 +262,8 @@ func (p *Playwright) FirstPaint() uint64 {
 func (p *Playwright) FirstContentfulPaint() uint64 {
 	entries, err := p.Page.Evaluate("JSON.stringify(performance.getEntriesByName('first-contentful-paint'))")
 	if err != nil {
-		log.Fatalf("error with getting the first-contentful-paint entries: %v", err)
+		ReportError(err, "xk6-playwright: error with getting the first-contentful-paint entries")
+		return 0
 	}
 	entriesToString := fmt.Sprintf("%v", entries)
 	return gjson.Get(entriesToString, "0.startTime").Uint()
@@ -230,7 +273,8 @@ func (p *Playwright) FirstContentfulPaint() uint64 {
 func (p *Playwright) TimeToMinimallyInteractive() uint64 {
 	entries, err := p.Page.Evaluate("JSON.stringify(performance.getEntriesByType('first-input'))")
 	if err != nil {
-		log.Fatalf("error with getting the first-input entries time to minimally interactive metrics: %v", err)
+		ReportError(err, "xk6-playwright: error with getting the first-input entries for time to minimally interactive metrics")
+		return 0
 	}
 	entriesToString := fmt.Sprintf("%v", entries)
 	return gjson.Get(entriesToString, "0.startTime").Uint()
@@ -240,7 +284,8 @@ func (p *Playwright) TimeToMinimallyInteractive() uint64 {
 func (p *Playwright) FirstInputDelay() uint64 {
 	entries, err := p.Page.Evaluate("JSON.stringify(performance.getEntriesByType('first-input'))")
 	if err != nil {
-		log.Fatalf("error with getting the first-input entries for first input delay metrics: %v", err)
+		ReportError(err, "xk6-playwright: error with getting the first-input entries for first input delay metrics")
+		return 0
 	}
 	entriesToString := fmt.Sprintf("%v", entries)
 	return gjson.Get(entriesToString, "0.processingStart").Uint() - gjson.Get(entriesToString, "0.startTime").Uint() //https://web.dev/fid/  for calc
@@ -250,7 +295,8 @@ func (p *Playwright) FirstInputDelay() uint64 {
 func (p *Playwright) Cookies() []*playwright.BrowserContextCookiesResult {
 	cookies, err := p.cookies()
 	if err != nil {
-		log.Fatalf("error with getting the cookies: %v", err)
+		ReportError(err, "xk6-playwright: error with getting the cookies")
+		return nil
 	}
 	return cookies
 }
@@ -290,4 +336,11 @@ func (p *Playwright) cookies() ([]*playwright.BrowserContextCookiesResult, error
 		return p.BrowserContext.Cookies()
 	}
 	return nil, errors.New("no browser or browser context attached")
+}
+
+// ReportError reports an error if it is not nil
+func ReportError(err error, msg string) {
+	if err != nil {
+		fmt.Printf("%s: %s", msg, err)
+	}
 }
