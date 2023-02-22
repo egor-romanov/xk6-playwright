@@ -126,6 +126,67 @@ func (p *Playwright) WaitForSelector(selector string, opts playwright.PageWaitFo
 	return nil
 }
 
+func (p *Playwright) WaitForNavigation(opts playwright.PageWaitForNavigationOptions) error {
+	if _, err := p.Page.WaitForNavigation(opts); err != nil {
+		ReportError(err, "xk6-playwright: error waiting for navigation")
+		return err
+	}
+	return nil
+}
+
+func (p *Playwright) WaitForLoadState(state string) {
+	p.Page.WaitForLoadState(state)
+}
+
+func (p *Playwright) CountAll(selector string) (int32, error) {
+	elements, err := p.Page.QuerySelectorAll(selector)
+	if err != nil {
+		ReportError(err, "xk6-playwright: error querying selector")
+		return 0, err
+	}
+	return int32(len(elements)), nil
+}
+
+func (p *Playwright) CountByState(selector string, state string) (int32, error) {
+	elements, err := p.Page.QuerySelectorAll(selector)
+	if err != nil {
+		ReportError(err, "xk6-playwright: error querying selector")
+		return 0, err
+	}
+	var count int32
+	for _, element := range elements {
+		shouldCount := false
+		var err error
+		switch state {
+		case "visible":
+			shouldCount, err = element.IsVisible()
+		case "hidden":
+			shouldCount, err = element.IsHidden()
+		case "enabled":
+			shouldCount, err = element.IsEnabled()
+		case "disabled":
+			shouldCount, err = element.IsDisabled()
+		case "editable":
+			shouldCount, err = element.IsEditable()
+		case "checked":
+			shouldCount, err = element.IsChecked()
+		default:
+			err = errors.New("invalid state")
+			ReportError(err, "xk6-playwright: invalid state")
+			return 0, err
+		}
+
+		if err != nil {
+			ReportError(err, "xk6-playwright: error checking visibility")
+			return 0, err
+		}
+		if shouldCount {
+			count++
+		}
+	}
+	return count, nil
+}
+
 // Click wrapper around playwright click page function that takes in a selector and a set of options
 func (p *Playwright) Click(selector string, opts playwright.PageClickOptions) error {
 	if err := p.Page.Click(selector, opts); err != nil {
