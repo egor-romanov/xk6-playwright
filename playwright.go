@@ -33,7 +33,7 @@ func (p *Playwright) Launch(args playwright.BrowserTypeLaunchOptions) error {
 		ReportError(err, "xk6-playwright: cannot start playwright")
 		return err
 	}
-	browser, err := pw.Chromium.Launch(args)
+	browser, err := pw.Firefox.Launch(args)
 	if err != nil {
 		ReportError(err, "xk6-playwright: cannot launch chromium")
 		return err
@@ -50,7 +50,7 @@ func (p *Playwright) LaunchPersistent(dir string, args playwright.BrowserTypeLau
 		ReportError(err, "xk6-playwright: cannot start playwright")
 		return err
 	}
-	browser, err := pw.Chromium.LaunchPersistentContext(dir, args)
+	browser, err := pw.Firefox.LaunchPersistentContext(dir, args)
 	if err != nil {
 		ReportError(err, "xk6-playwright: cannot launch chromium")
 		return err
@@ -67,7 +67,7 @@ func (p *Playwright) Connect(url string, args playwright.BrowserTypeConnectOverC
 		ReportError(err, "xk6-playwright: cannot start playwright")
 		return err
 	}
-	browser, err := pw.Chromium.ConnectOverCDP(url, args)
+	browser, err := pw.Firefox.ConnectOverCDP(url, args)
 	if err != nil {
 		ReportError(err, "xk6-playwright: cannot launch chromium")
 		return err
